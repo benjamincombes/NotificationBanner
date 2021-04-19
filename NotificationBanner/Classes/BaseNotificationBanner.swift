@@ -152,9 +152,10 @@ open class BaseNotificationBanner: UIView {
     private let appWindow: UIWindow? = {
         if #available(iOS 13.0, *) {
             return UIApplication.shared.connectedScenes
-                .first { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }
-                .map { $0 as? UIWindowScene }
-                .map { $0?.windows.first } ?? UIApplication.shared.delegate?.window ?? UIApplication.shared.keyWindow
+                    .first { $0.activationState == .foregroundActive }
+                    .map { $0 as? UIWindowScene }
+                    .map { $0?.windows.first } ?? UIApplication.shared.delegate?.window ?? nil
+            return UIApplication.shared.windows.filter { $0.isKeyWindow }.first
         }
 
         return UIApplication.shared.delegate?.window ?? nil
@@ -277,7 +278,7 @@ open class BaseNotificationBanner: UIView {
 
     private func finishBannerYOffset() -> CGFloat {
         let bannerIndex = (bannerQueue.banners.firstIndex(of: self) ?? bannerQueue.banners.filter { $0.isDisplaying }.count)
-        
+
         return bannerQueue.banners.prefix(bannerIndex).reduce(0) { $0
             + $1.bannerHeight
             - (bannerPosition == .top ? spacerViewHeight() : 0) // notch spacer height for top position only
@@ -286,7 +287,7 @@ open class BaseNotificationBanner: UIView {
             // this calculations are made only for banners except first one, for first banner it'll be 0
         }
     }
-    
+
     internal func updateBannerPositionFrames() {
         guard let window = appWindow else { return }
         bannerPositionFrame = BannerPositionFrame(
@@ -362,7 +363,7 @@ open class BaseNotificationBanner: UIView {
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(onOrientationChanged),
@@ -398,7 +399,7 @@ open class BaseNotificationBanner: UIView {
                 object: self,
                 userInfo: notificationUserInfo
             )
-            
+
             delegate?.notificationBannerWillAppear(self)
             postAccessibilityNotification()
 
@@ -424,7 +425,7 @@ open class BaseNotificationBanner: UIView {
                     object: self,
                     userInfo: self.notificationUserInfo
                 )
-                
+
                 self.delegate?.notificationBannerDidAppear(self)
 
                 /* We don't want to add the selector if another banner was queued in front of it
@@ -481,11 +482,11 @@ open class BaseNotificationBanner: UIView {
                 selector: #selector(dismiss),
                 object: nil
              )
-            
+
              self.perform(#selector(dismiss), with: nil, afterDelay: self.duration)
         }
     }
-    
+
     /**
         The height adjustment needed in order for the banner to look properly displayed.
      */
@@ -512,13 +513,13 @@ open class BaseNotificationBanner: UIView {
     @objc private dynamic func onOrientationChanged() {
         guard let window = appWindow,
               currentDeviceOrientationIsSupportedByApp() else { return }
-        
+
         updateSpacerViewHeight()
 
         let edgeInsets = bannerEdgeInsets ?? .zero
 
         let newY = (bannerPosition == .top) ? (frame.origin.y) : (window.height - bannerHeight + edgeInsets.top - edgeInsets.bottom)
-        
+
         frame = CGRect(
             x: frame.origin.x,
             y: newY,
@@ -556,7 +557,7 @@ open class BaseNotificationBanner: UIView {
             object: self,
             userInfo: notificationUserInfo
         )
-        
+
         delegate?.notificationBannerWillDisappear(self)
 
         isDisplaying = false
@@ -575,7 +576,7 @@ open class BaseNotificationBanner: UIView {
                 object: self,
                 userInfo: self.notificationUserInfo
             )
-            
+
             self.delegate?.notificationBannerDidDisappear(self)
 
             self.bannerQueue.showNext(callback: { (isEmpty) in
@@ -635,14 +636,14 @@ open class BaseNotificationBanner: UIView {
 
         return true
     }
-    
+
     /**
         Determines wether or not the current orientation that the device is in
         is supported by the current application.
      */
     private func currentDeviceOrientationIsSupportedByApp() -> Bool {
         let supportedOrientations = UIApplication.shared.supportedInterfaceOrientations(for: appWindow)
-        
+
         switch UIDevice.current.orientation {
         case .portrait:
             return supportedOrientations.contains(.portrait)
